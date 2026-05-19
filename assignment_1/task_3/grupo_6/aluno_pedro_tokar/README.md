@@ -121,7 +121,8 @@ Se tudo estiver certo, todas as tabelas terão entradas.
 ## ETL
 
 O provisionamento irá criar um Job do Glue na AWS, e esse Job irá executar o 
-arquivo `glue_etl.py`. Para executar o job e verificar se ele consegue executar com status "Succeeded", existem duas opções:
+arquivo `glue_etl.py`. Para executar o job e verificar se ele consegue executar
+com status "Succeeded", existem duas opções:
 
 ### Opção automática
 
@@ -149,11 +150,13 @@ o script deve sair do status de "Running" para "Succeeded".
 
 ## Verificação de resultados
 
-Após o Job do AWS Glue finalizar com o status "Succeeded", você pode validar se os dados foram modelados e salvos corretamente por dois caminhos:
+Após o Job do AWS Glue finalizar com o status "Succeeded", você pode validar se
+os dados foram modelados e salvos corretamente por dois caminhos:
 
 ### Opção automática
 
-Execute o script `verify_s3.py` para realizar uma varredura completa e programática sobre os dados salvos no S3:
+Execute o script `verify_s3.py` para realizar uma varredura completa e 
+programática sobre os dados salvos no S3:
 
 ```Bash
 $ python scripts/verify_s3.py --bucket_name=$(terraform -chdir=terraform_config output -raw datalake_bucket)
@@ -177,22 +180,44 @@ dimensões mapeadas.
 ### Opção manual
 
 - Acesse o painel da AWS e o console do serviço S3;
-- Logo na tela inicial haverá uma lista de buckets. Selecione o bucket adequado (o nome vai começar com `classicmodels-datalake`);
+- Logo na tela inicial haverá uma lista de buckets. Selecione o bucket adequado
+(o nome vai começar com `classicmodels-datalake`);
 - Navegue até a pasta `output/`. Nela, deverão existir as seguintes pastas:
    - `fact_orders/`
    - `dim_customers/`
    - `dim_products/`
    - `dim_dates/`
    - `dim_countries/`
-- Entre em qualquer uma dessas pastas e verifique se há arquivos gerados com a extensão `.parquet`.
+- Entre em qualquer uma dessas pastas e verifique se há arquivos gerados com a 
+extensão `.parquet`.
 
 ## Dashboard analítico
 
-Com todos os passos e scripts executados, o data lake estará pronto para análises. Uma entrada é criada no 
-catálogo de dados do AWS Glue, e pode ser acessada por diversas ferramentas de análise, incluindo o Amazon Athena.
-O notebook [`dashboard.ipynb`](./dashboard.ipynb) contém um dashboard de exemplo que lê desses dados.
+Com todos os passos e scripts executados, o data lake estará pronto para 
+análises. Uma entrada é criada no catálogo de dados do AWS Glue, e pode ser 
+acessada por diversas ferramentas de análise, incluindo o Amazon Athena.
+O notebook [`dashboard.ipynb`](./dashboard.ipynb) contém um dashboard de 
+exemplo que lê desses dados.
 
-Esse notebook foi pensado para ser executado no mesmo ambiente em que o terraform foi executado, e usa o
-comando `terraform output` para obter dados da infraestrutura na AWS. É necessário sobreescrever esses dados
-no notebook caso o ambiente do terraform não esteja disponível. O notebook depende das bibliotecas listadas
-no arquivo `requirements.txt` para executar corretamente.
+### Uso local
+Esse notebook pode ser usado localmente. Os únicos requisitos para isso são
+ter as bibliotecas listadas no arquivo `requirements.txt` instaladas no
+ambiente e ter as credenciais da aws armazenadas no arquivo `~/.aws/resources`,
+já que o boto3 é usado para fazer a conexão com a AWS. Caso outros nomes
+para a database do glue e para o workgroup do Athena sejam usados, será
+necessário escrever eles nas variávies de ambiente `GLUE_DATABASE` e
+``ATHENA_WORKGROUP`
+
+### Uso do dashboard no SageMaker
+É possível usar o notebook de dashboard pelo serviço Amazon SageMaker. O
+terraform já cria a infraestrutura necessária para que o notebook execute,
+mas é necessário que o upload do notebook seja feito sem o terraform. Para
+isso, execute o seguinte comando:
+
+```bash
+$ python scripts/upload_notebook.py --bucket_name $(terraform -chdir=terraform_config output -raw datalake_bucket)
+```
+
+Ao final da execução, um link para acesso do ambiente JupyterLab hospedado no
+SageMaker será fornecido. Ao acessar o link, será possível escolher o notebook
+na lista de arquivos e então acessar o dashboard remotamente.

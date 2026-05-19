@@ -182,6 +182,34 @@ resource "aws_athena_workgroup" "analytics_wg" {
   force_destroy = true
 }
 
+/* Configura um sagemaker que vai baixar o notebook do S3 toda vez que iniciar
+Esse primeiro passo define uma regra de ciclo de vida do AWS que vai fazer o
+ambiente pegar o notebook do S3*/
+resource "aws_sagemaker_notebook_instance_lifecycle_configuration" "notebook_config" {
+  name     = "sincronizar-notebook-config"
+  
+  # O script roda sempre que a instância liga
+  on_start = base64encode(<<-EOT
+    #!/bin/bash
+    
+    # Navega para a pasta correta
+    cd /home/ec2-user/SageMaker
+    
+    # Executa como ec2-user. O "|| true" no final ele impede que o script 
+    # quebre e trave a criação se o S3 ainda estiver vazio.
+    sudo -u ec2-user aws s3 cp s3://${aws_s3_bucket.datalake_bucket.id}/notebooks/dashboard.ipynb . || true
+  EOT
+  )
+}
+
+/* Agora crio uma instância do SageMaker associada à configuração acima */
+resource "aws_sagemaker_notebook_instance" "analytics_notebook" {
+  name                  = "classicmodels-dashboard"
+  role_arn              = data.aws_iam_role.lab_role.arn
+  instance_type         = "ml.t3.medium"
+  lifecycle_config_name = aws_sagemaker_notebook_instance_lifecycle_configuration.notebook_config.name
+}
+
 /* Define o nome do endpoint do RDS como output do terraform, bom para permitir
 a leitura do endpoint depois*/
 output "db_endpoint" {
